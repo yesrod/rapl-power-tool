@@ -9,7 +9,7 @@ This should work on:
 - any AMD Zen based system:
   - Zen / Zen+ / Zen 2 from kernel 5.8 up
   - Zen 3 / Zen 3+ / Zen 4 from kernel 5.11 up
-  - Zen 5 with an additional [one-liner patch](https://lore.kernel.org/lkml/20240719101234.50827-1-Dhananjay.Ugwekar@amd.com/T/) that hasn't landed yet as far as I am aware
+  - Zen 5 from kernel 6.12 up
 
 ## Usage
 ```
