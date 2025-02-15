@@ -4,8 +4,6 @@
 
 This was thrown together in an afternoon to handle getting power data from AMD Zen processors, since the zenpower kernel driver doesn't build on kernels 6.14+ and is unlikely to be updated.
 
-Root access is required to read RAPL counters; use sudo or something.
-
 This should work on:
 - any Intel system running kernel 3.14 or newer
 - any AMD Zen based system:
@@ -25,4 +23,23 @@ options:
   -z ZONE, --zone ZONE  Get power data from this RAPL zone in watts
   -s SUBZONE, --subzone SUBZONE
                         Get power data from this RAPL subzone in watts. Requires -z/--zone
+```
+
+## Running without root
+
+Normally `setcap` can be used to give executables arbitrary permissions, like bypassing file permission checks for reads (`CAP_DAC_READ_SEARCH`), but that gets complicated with scripts, since the actual executable is the interpreter, in this case `python3`.
+
+This can be worked around with [pyinstaller](https://pyinstaller.org/en/stable/), since pyinstaller produces a self-contained binary from a Python script or module.
+
+```
+# install pyinstaller
+python3 -m venv ~/venv/pyinstaller
+. ~/venv/pyinstaller/bin/activate
+python3 -m pip install pyinstaller
+
+# generate executable
+pyinstaller -F ./rapl-power-tool.py
+
+# give generated executable special powers
+sudo setcap CAP_DAC_READ_SEARCH=+ep ./dist/rapl-power-tool
 ```
