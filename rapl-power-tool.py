@@ -26,13 +26,9 @@ class REPLZone:
 
         zones: Dict[int, REPLZone] = {}
         for root, dirs, files in os.walk(POWERCAP_DIR):
-            #print(root)
-            #print(dirs)
-            #print(files)
             if POWERCAP_ENERGY_FILE in files:
                 endpoint_path = os.path.join(root, POWERCAP_ENERGY_FILE)
                 zone_matches = zone_pattern.findall(endpoint_path)
-                #print(endpoint_path, zone_matches)
                 if zone_matches:
                     for match in zone_matches:
                         if int(match[0]) in zones.keys():  # zone has been indentified previously
@@ -81,7 +77,6 @@ class REPLZone:
             print("Counter rollover detected, remeasuring")
             return self.get_zone_data(subzone, data_interval)
         uj_consumed = end_uj - start_uj
-        #print(f"zone {self.zone_id} subzone {subzone}: duration {duration}, uj_consumed {uj_consumed}")
         return (float(uj_consumed) / 1000000) / float(duration)
 
 def main():
