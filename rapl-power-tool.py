@@ -77,7 +77,7 @@ class REPLZone:
             print("Counter rollover detected, remeasuring")
             return self.get_zone_data(subzone, data_interval)
         uj_consumed = end_uj - start_uj
-        return (float(uj_consumed) / 1000000) / float(duration)
+        return round((float(uj_consumed) / 1000000) / float(duration), 2)
 
 def main():
     parser = argparse.ArgumentParser(
