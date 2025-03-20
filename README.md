@@ -13,7 +13,7 @@ This should work on:
 
 ## Usage
 ```
-usage: rapl-power-tool [-h] [-l] [-z ZONE] [-s SUBZONE]
+usage: rapl-power-tool [-h] [-l] [-z ZONE]
 
 A small Python script to read CPU energy usage via RAPL
 
@@ -21,8 +21,6 @@ options:
   -h, --help            show this help message and exit
   -l, --list            List all available RAPL zones and subzones
   -z ZONE, --zone ZONE  Get power data from this RAPL zone in watts
-  -s SUBZONE, --subzone SUBZONE
-                        Get power data from this RAPL subzone in watts. Requires -z/--zone
 ```
 
 ## Running without root
