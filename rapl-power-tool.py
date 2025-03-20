@@ -18,9 +18,8 @@ ZONE_PATTERN = re.compile(r'([a-zA-Z-]+):(\d+):?(\d+)?')
 
 @dataclass
 class REPLZone:
-    #name: str
+    name: str
     zone_id: str
-    #subzones: List[Tuple[int, str]] = field(default_factory=list)
     subzones: List["REPLZone"] = field(default_factory=list)
 
     @classmethod
@@ -32,18 +31,31 @@ class REPLZone:
                     POWERCAP_DIR = os.path.join(POWERCAP_ROOT_DIR, root_dir)
                     for root, dirs, files in os.walk(POWERCAP_DIR):
                         for dir in dirs:
-                            endpoint_path = os.path.join(root, POWERCAP_ENERGY_FILE)
                             zone_matches = ZONE_PATTERN.match(dir)
                             if zone_matches:
                                 match = zone_matches.groups()
                                 zone_id = f"{match[0]}:{match[1]}"
                                 if zone_id in zones.keys():  # zone has been indentified previously
                                     if match[2] and f"{zone_id}:{match[2]}" not in zones[zone_id].subzones:  # new subzone identified
-                                        zones[zone_id].subzones.append(REPLZone(zone_id = f"{zone_id}:{match[2]}"))
+                                        name_path = os.path.join(root, f"{zone_id}:{match[2]}", 'name')
+                                        with open(name_path, 'r') as f:
+                                            name = f.read().rstrip()
+                                        zones[zone_id].subzones.append(REPLZone(name = name, zone_id = f"{zone_id}:{match[2]}"))
                                 else:   # new zone identified
+                                    name_path = os.path.join(root, zone_id, 'name')
+                                    with open(name_path, 'r') as f:
+                                        name = f.read().rstrip()
+                                    if match[2]:
+                                        subzone_name_path = os.path.join(root, zone_id, f"{zone_id}:{match[2]}", 'name')
+                                        with open(subzone_name_path, 'r') as f:
+                                            subzone_name = f.read().rstrip()
+                                        subzone = REPLZone(name = subzone_name, zone_id = f"{zone_id}:{match[2]}")
+                                    else:
+                                        subzone = None
                                     zones[zone_id] = REPLZone(
+                                        name = name,
                                         zone_id = zone_id,
-                                        subzones = [ REPLZone(zone_id = f"{zone_id}:{match[2]}"), ] if match[2] else []
+                                        subzones = [ subzone, ] if subzone else []
                                     )
         return zones
 
@@ -52,12 +64,16 @@ class REPLZone:
         zone_path = REPLZone._build_zone_path(zone)
         if not os.path.exists(zone_path):
             raise ValueError(f"Zone {zone} not found")
+        with open(os.path.join(zone_path, 'name')) as f:
+            name = f.read().rstrip()
+        zone_obj = REPLZone(name = name, zone_id=zone)
         zone_matches = ZONE_PATTERN.findall(zone_path)
-        zone_obj = REPLZone(zone_id=zone)
         if zone_matches:
             for match in zone_matches:
                 if match[2] and f"{zone}:{match[2]}" not in zone_obj.subzones:  # new subzone identified
-                    zone_obj.subzones.append(REPLZone(zone_id = f"{zone}:{match[2]}"))
+                    with open(os.path.join(zone_path, 'name')) as f:
+                        subzone_name = f.read().rstrip()
+                    zone_obj.subzones.append(REPLZone(name=subzone_name, zone_id = f"{zone}:{match[2]}"))
         return zone_obj
 
     @staticmethod
@@ -111,9 +127,9 @@ def main():
     if args.list:
         zones = REPLZone.list_zones()
         for zone in zones.values():
-            print(zone.zone_id)
+            print(f"{zone.zone_id} ({zone.name})")
             for subzone in zone.subzones:
-                print(f"  \u2514 {subzone.zone_id}")
+                print(f"  \u2514 {subzone.zone_id} ({subzone.name})")
         sys.exit(0)
 
     if args.zone is None:
