@@ -1,13 +1,14 @@
 #!/bin/env python3
 
 import argparse
+import json
 import os
 import re
 import sys
 import time
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 # main zones like /sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj
 # subzones like /sys/class/powercap/intel-rapl/intel-rapl:0/intel-rapl:0:0/energy_uj
@@ -70,10 +71,12 @@ class REPLZone:
         zone_matches = ZONE_PATTERN.findall(zone_path)
         if zone_matches:
             for match in zone_matches:
-                if match[2] and f"{zone}:{match[2]}" not in zone_obj.subzones:  # new subzone identified
-                    with open(os.path.join(zone_path, 'name')) as f:
-                        subzone_name = f.read().rstrip()
-                    zone_obj.subzones.append(REPLZone(name=subzone_name, zone_id = f"{zone}:{match[2]}"))
+                for f in os.listdir(zone_path):
+                    if zone in f: # new subzone identified
+                        subzone_path = os.path.join(zone_path, f)
+                        with open(os.path.join(subzone_path, 'name')) as file:
+                            subzone_name = file.read().rstrip()
+                        zone_obj.subzones.append(REPLZone(name=subzone_name, zone_id = f))
         return zone_obj
 
     @staticmethod
@@ -111,34 +114,68 @@ class REPLZone:
         except FileNotFoundError:
             raise ValueError(f"No such zone {self.zone_id}")
 
+    def as_dict(
+            self,
+            include_data: bool = False
+        ) -> Dict[str, Any]:
+        zone_data = {
+            "zone_id": self.zone_id,
+            "name": self.name,
+            "subzones": [ s.as_dict(include_data=include_data) for s in self.subzones ]
+        }
+        if include_data:
+            zone_data["data"] = self.get_zone_data()
+        return zone_data
+
+def print_zones_text(zones: List[REPLZone]):
+    for zone in zones:
+        print(f"{zone.zone_id} ({zone.name}): {zone.get_zone_data()}")
+        for subzone in zone.subzones:
+            print(f"  \u2514 {subzone.zone_id} ({subzone.name}): {subzone.get_zone_data()}")
+
+def print_zones_json(zones: List[REPLZone]):
+    output_data = []
+    for zone in zones:
+        output_data.append(
+            zone.as_dict(include_data=True)
+        )
+    print(json.dumps(output_data, indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="rapl-power-tool",
         description="A small Python script to read CPU energy usage via RAPL"
     )
     parser.add_argument('-l', '--list', action='store_true',
-        help="List all available RAPL zones and subzones"                    
+        help="List all available RAPL zones and subzones, with power data"                    
     )
     parser.add_argument('-z', '--zone', type=str,
         help="Get power data from this RAPL zone in watts"
+    )
+    parser.add_argument('-j', '--json', action='store_true',
+        help="Output in JSON format"
     )
     args = parser.parse_args()
 
     if args.list:
         zones = REPLZone.list_zones()
-        for zone in zones.values():
-            print(f"{zone.zone_id} ({zone.name})")
-            for subzone in zone.subzones:
-                print(f"  \u2514 {subzone.zone_id} ({subzone.name})")
+        if args.json:
+            print_zones_json(list(zones.values()))
+        else:
+            print_zones_text(list(zones.values()))
         sys.exit(0)
 
     if args.zone is None:
-        print("ERROR: Zone is required")
+        print("ERROR: One of -z/--zone or -l/--list is required")
         parser.print_help()
         sys.exit(1)
     try:
         zone = REPLZone.get_zone(args.zone)
-        print(zone.get_zone_data())
+        if args.json:
+            print(json.dumps(zone.as_dict(include_data=True)))
+        else:
+            print_zones_text([zone,])
     except ValueError as e:
         print(e)
 
